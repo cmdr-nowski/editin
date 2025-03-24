@@ -1,0 +1,70 @@
+#!/usr/bin/perl
+
+while(<>) {
+
+    if (/"timestamp":"([^"]+)/) {
+        $ts = $1;
+    }
+
+    if (/"JumpType":"Hyperspace.*"StarSystem":"([^"]+)".*"SystemAddress":(\d+)/) {
+        $systems{$2} = $1;
+
+        push (@itinerary, {'ts' => $ts, 'addr' => $2});
+    }
+
+    if (/"event":"SAAScanComplete".*"BodyName":"([^"]+).*"SystemAddress":(\d+).*"BodyID":(\d+)/) {
+        $mapped{$2}{$3} = $1;
+    }
+        
+    if (/"ScanType":"Detailed"/) {
+    
+        if (!/PlanetClass/) {
+            # not a planet then, don't care.
+        } elsif (/ScanType":"Detailed".*BodyID":(\d+).*SystemAddress":(\d+).*PlanetClass":"([^"]+)"/) {
+            $bodies{$2}{$1} = $3;
+        } else {
+            print "parse fail: $_";
+        }
+    }
+
+    if (/"ScanType":"Log"/) {
+        if (/"event":"ScanOrganic".*Type":"Log".*Variant_Localised":"([^"]+).*SystemAddress":(\d+).*Body":(\S+)/) {
+            $scans{$2}{$3} .= ($scans{$2}{$3} ? "\n\t\t\t$1" : $1);
+        } else {
+            print "parse fail: $_";
+        }
+    }
+
+    if (/"event":"FSSAllBodiesFound".*"SystemAddress":(\d+).*"Count":(\d+)/) {
+        $bodycounts{$1} = $2;
+    }
+}
+
+
+for (@itinerary) {
+    ($addr, $ts) = ($_->{'addr'}, $_->{'ts'});
+    $name = $systems{$addr};
+    if (defined($bodycounts{$addr})) {
+        $count = ", scanned all $bodycounts{$addr} bodies";
+    } else {
+        $count = '';
+    }
+
+    print "jumped to $name$count ($ts)\n";
+
+    if ($mapped{$addr}) {
+        print "\tmapped\n";
+        for (sort keys %{$mapped{$addr}}) {
+            $body = $mapped{$addr}{$_};
+            print "\t\t$body: $bodies{$addr}{$_}\n";
+        }
+    }
+    if ($scans{$addr}) {
+        print "\tscanned:\n";
+        for (sort keys %{$scans{$addr}}) {
+            $body = $mapped{$addr}{$_};
+            print "\t\t$body:\n\t\t\t$scans{$addr}{$_} \n";
+        }
+    }
+}
+        
