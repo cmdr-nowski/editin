@@ -10,6 +10,7 @@ run as `./itin <journals filespec>`, e.g.
 
 Sample output:
 
+```
 jumped to Blau Eur WX-I c10-4, scanned all 2 bodies (2023-12-20T22:38:51Z)
 jumped to Blau Eur WI-S d4-40, scanned all 4 bodies (2023-12-20T22:40:10Z)
 jumped to Blau Eur QF-S b20-0 (2023-12-20T22:41:30Z)
