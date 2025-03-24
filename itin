@@ -15,7 +15,35 @@ while(<>) {
     if (/"event":"SAAScanComplete".*"BodyName":"([^"]+).*"SystemAddress":(\d+).*"BodyID":(\d+)/) {
         $mapped{$2}{$3} = $1;
     }
-        
+
+    my $line = $_;
+
+    if ($line =~ /"event":"FSSBodySignals".*"Signals":\[([^\]]+)/) {
+        my $signals = $1;
+        my %sigTypes = ();
+        if ($signals =~ /"Type_Localised":"([^"]+)", "Count":(\d+)(.*)/) {
+            $sigTypes{$1} = $2;
+            $signals = $3;
+        }
+        if ($signals =~ /"Type_Localised":"([^"]+)", "Count":(\d+)(.*)/) {
+            $sigTypes{$1} = $2;
+        }
+
+        if ($line =~ /"BodyID":(\d+)/) {
+            my $bodyId = $1;
+            if ($line =~/"SystemAddress":(\d+)/) {
+                my $sysAddr = $1    ;
+                if ($line =~/"BodyName":"([^"]+)/) {
+                    my $bodyName = $1;
+                    $signalBodies{$sysAddr}{$bodyId} = $bodyName;
+                    for (sort keys %sigTypes) {
+                        $foundSignals{$sysAddr}{$bodyId}{$_} = $sigTypes{$_};
+                    }
+                }
+            }
+        }
+    }
+
     if (/"ScanType":"Detailed"/) {
     
         if (!/PlanetClass/) {
@@ -52,11 +80,30 @@ for (@itinerary) {
 
     print "jumped to $name$count ($ts)\n";
 
+    if ($foundSignals{$addr}) {
+        for (sort keys %{$foundSignals{$addr}}) {
+            $bodyId = $_;
+            $body = $signalBodies{$addr}{$_};
+            $out = "Found signals at $body: ";
+            for (sort keys %{$foundSignals{$addr}{$bodyId}}) {
+                $out .= "$_: $foundSignals{$addr}{$bodyId}{$_}, ";
+            }
+            $out =~ s/,\s+$//;
+            print "$out\n";
+        }
+    }
+
     if ($mapped{$addr}) {
         print "\tmapped\n";
         for (sort keys %{$mapped{$addr}}) {
             $body = $mapped{$addr}{$_};
             print "\t\t$body: $bodies{$addr}{$_}\n";
+            my $bodyId = $_;
+            if ($foundSignals{$addr}{$bodyId}) {
+                for (sort keys %{$foundSignals{$addr}{$bodyId}}) {
+                    print "\t\t\tfound $_ signals: " . $foundSignals{$addr}{$bodyId}{$_} . "\n";
+                }
+            }
         }
     }
     if ($scans{$addr}) {
